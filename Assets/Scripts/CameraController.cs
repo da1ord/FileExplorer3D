@@ -30,7 +30,7 @@ public class CameraController : MonoBehaviour
 
         fileExplorer_ = GameObject.Find( "Canvas" ).GetComponent<FileExplorer>();
 
-        //Cursor.lockState = CursorLockMode.Locked;
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
     // Update call

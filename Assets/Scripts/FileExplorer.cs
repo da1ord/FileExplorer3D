@@ -35,6 +35,12 @@ public class FileExplorer : MonoBehaviour
     bool showingMore_;
     int imageToShow_;
 
+    /**TEST
+     */
+    Texture2D m_myTexture;
+    bool bFinishedCopying = false;
+    int imageProcessed = 0;
+
     // Use this for initialization
     void Start()
     {
@@ -155,6 +161,11 @@ public class FileExplorer : MonoBehaviour
 
         // Set paintings textures
         StartCoroutine( SetPaintingsTextures() );
+
+        //for( int i = 0; i < 9; i++ )
+        //{
+        //    StartCoroutine( downloadTexture( i ) );
+        //}
     }
 
     void GetDirectoryInfo()
@@ -173,7 +184,10 @@ public class FileExplorer : MonoBehaviour
         // Cleanup
         for( int i = 0; i < paintings_.Count; i++ )
         {
-            Destroy( paintings_[i].GetComponent<Renderer>().material.mainTexture );
+            // TODO: Solve this
+            //Destroy( paintings_[i].GetComponent<Renderer>().material.mainTexture );
+            //DestroyImmediate( paintings_[i].GetComponent<Renderer>().material.mainTexture, true );
+            Destroy( paintings_[i].GetComponent<Renderer>().materials[2].mainTexture );
         }
         System.GC.Collect();
 
@@ -418,6 +432,7 @@ public class FileExplorer : MonoBehaviour
                 if( imageFiles_.Count > 10 )
                 {
                     LoadImageToTexture( i, i + 1 );
+
                     //www = new WWW( "file://" + imageFiles_[i].FullName );
                     //tex = new Texture2D( 2, 2 );
                     //www.LoadImageIntoTexture( tex );
@@ -427,6 +442,7 @@ public class FileExplorer : MonoBehaviour
             }
 
             LoadImageToTexture( i, i );
+
             //www = new WWW( "file://" + imageFiles_[i].FullName );
             //tex = new Texture2D( 2, 2 );
             //www.LoadImageIntoTexture( tex );
@@ -447,7 +463,7 @@ public class FileExplorer : MonoBehaviour
         //WWW www = new WWW( "file://" + imageFiles_[imageID].FullName );
         //Texture2D tex = new Texture2D( 2, 2 );
         //www.LoadImageIntoTexture( tex );
-        paintings_[paintingID].GetComponent<Renderer>().material.mainTexture = GetImageAsTexture( imageID );//tex;
+        paintings_[paintingID].GetComponent<Renderer>().materials[2].mainTexture = GetImageAsTexture( imageID );//tex;
     }
 
     Texture2D GetImageAsTexture( int imageID )
@@ -456,5 +472,80 @@ public class FileExplorer : MonoBehaviour
         Texture2D tex = new Texture2D( 2, 2 );
         www.LoadImageIntoTexture( tex );
         return tex;
+    }
+
+    /***TEST*****************
+     * 
+     * 
+     * 
+     * 
+     * 
+     * *********************/
+
+    IEnumerator downloadTexture( int imageID )
+    {
+        bFinishedCopying = false;
+        WWW www = new WWW( "file://" + imageFiles_[imageID].FullName );
+        yield return www;
+
+        //m_myTexture = www.texture;  // Commenting this line removes frame out
+
+        Debug.Log( "Downloaded Texture. Now copying it" );
+
+        //Copy Texture to m_myTexture WITHOUT callback function
+        //StartCoroutine(copyTextureAsync(www.texture));
+
+        //Copy Texture to m_myTexture WITH callback function
+        StartCoroutine( copyTextureAsync( www.texture, false, finishedCopying ) );
+    }
+
+
+    IEnumerator copyTextureAsync( Texture2D source, bool useMipMap = false, System.Action callBack = null )
+    {
+        const int LOOP_TO_WAIT = 400000; //Waits every 400,000 loop, Reduce this if still freezing
+        int loopCounter = 0;
+
+        int heightSize = source.height;
+        int widthSize = source.width;
+
+        //Create new Empty texture with size that matches source info
+        m_myTexture = new Texture2D( widthSize, heightSize, source.format, useMipMap );
+
+        for( int y = 0; y < heightSize; y++ )
+        {
+            for( int x = 0; x < widthSize; x++ )
+            {
+                //Get color/pixel at x,y pixel from source Texture
+                Color tempSourceColor = source.GetPixel( x, y );
+
+                //Set color/pixel at x,y pixel to destintaion Texture
+                m_myTexture.SetPixel( x, y, tempSourceColor );
+
+                loopCounter++;
+
+                if( loopCounter % LOOP_TO_WAIT == 0 )
+                {
+                    //Debug.Log("Copying");
+                    yield return null; //Wait after every LOOP_TO_WAIT 
+                }
+            }
+        }
+        //Apply changes to the Texture
+        m_myTexture.Apply();
+        bFinishedCopying = true;
+
+        //Let our optional callback function know that we've done copying Texture
+        if( callBack != null )
+        {
+            callBack.Invoke();
+        }
+    }
+
+    void finishedCopying()
+    {
+        bFinishedCopying = true;
+        Debug.Log( "Finished Copying Texture" );
+        paintings_[imageProcessed++].GetComponent<Renderer>().material.mainTexture = m_myTexture;
+        //Do something else
     }
 }
