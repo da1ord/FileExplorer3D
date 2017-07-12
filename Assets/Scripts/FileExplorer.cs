@@ -21,10 +21,12 @@ public class FileExplorer : MonoBehaviour
     List<FileInfo> imageFiles_;
     List<FileInfo> otherFiles_;
 
-    GameObject exitDoors_;
-    List<GameObject> doors_;
-    List<GameObject> paintings_;
-    List<GameObject> statues_;
+    /* Test */
+    ObjectProperties exitDoorsObject_;
+    List<ObjectProperties> doorsObjects_;
+    List<ObjectProperties> paintingsObjects_;
+    GameObject pileOfPaintings_;
+    List<ObjectProperties> statuesObjects_;
 
     TextMesh roomInfo_;
     GameObject player_;
@@ -35,6 +37,10 @@ public class FileExplorer : MonoBehaviour
     bool showingMore_;
     int imageToShow_;
 
+    Vector3 lastPaintingWallPosition_ = new Vector3( 15f, 4f, -10f );
+    Vector3 lastPaintingFloorPosition_ = new Vector3( 14f, 1.94f, -9f );
+    Quaternion lastPaintingWallRotation_ = Quaternion.Euler( -90f, 0f, 0f );
+    Quaternion lastPaintingFloorRotation_ = Quaternion.Euler( -100f, 0f, 0f );
     /**TEST
      */
     Texture2D m_myTexture;
@@ -51,24 +57,26 @@ public class FileExplorer : MonoBehaviour
         btnEnterDirectory_.onClick.AddListener( EnterDirectory );
 
         // Fill objects lists
-        exitDoors_ = GameObject.Find( "ExitDoors" );
-        doors_ = new List<GameObject>();
-        foreach( Transform child in GameObject.Find( "Doors" ).transform )
+        exitDoorsObject_ = GameObject.Find( "Scene/ExitDoors" ).GetComponentInChildren<ObjectProperties>();
+        doorsObjects_ = new List<ObjectProperties>();
+        foreach( Transform child in GameObject.Find( "Scene/Doors" ).transform )
         {
-            child.gameObject.SetActive( false );
-            doors_.Add( child.gameObject );
+            if( child.gameObject.GetComponent<ObjectProperties>() != null )
+                doorsObjects_.Add( child.gameObject.GetComponent<ObjectProperties>() );
         }
-        paintings_ = new List<GameObject>();
-        foreach( Transform child in GameObject.Find( "Paintings" ).transform )
+        paintingsObjects_ = new List<ObjectProperties>();
+        foreach( Transform child in GameObject.Find( "Scene/Paintings" ).transform )
         {
-            child.gameObject.SetActive( false );
-            paintings_.Add( child.gameObject );
+            if( child.gameObject.GetComponent<ObjectProperties>() != null )
+                paintingsObjects_.Add( child.gameObject.GetComponent<ObjectProperties>() );
+            else
+                pileOfPaintings_ = child.gameObject;
         }
-        statues_ = new List<GameObject>();
-        foreach( Transform child in GameObject.Find( "Statues" ).transform )
+        statuesObjects_ = new List<ObjectProperties>();
+        foreach( Transform child in GameObject.Find( "Scene/Statues" ).transform )
         {
-            child.gameObject.SetActive( false );
-            statues_.Add( child.gameObject );
+            if( child.gameObject.GetComponent<ObjectProperties>() != null )
+                statuesObjects_.Add( child.gameObject.GetComponent<ObjectProperties>() );
         }
 
         roomInfo_ = GameObject.Find( "InfoSign" ).GetComponentInChildren<TextMesh>();
@@ -82,7 +90,7 @@ public class FileExplorer : MonoBehaviour
 
         fading_ = false;
         showingMore_ = false;
-        imageToShow_ = 10;
+        imageToShow_ = 9;
 
         // Hide UI elements
         foldersDropdown_.gameObject.SetActive( false );
@@ -176,18 +184,14 @@ public class FileExplorer : MonoBehaviour
         directoryInfo_ = new DirectoryInfo( path_.text );
         string path = directoryInfo_.FullName;
 
-
+        // Cleanup
         directories_.Clear();
         imageFiles_.Clear();
         otherFiles_.Clear();
         
-        // Cleanup
-        for( int i = 0; i < paintings_.Count; i++ )
+        for( int i = 0; i < paintingsObjects_.Count; i++ )
         {
-            // TODO: Solve this
-            //Destroy( paintings_[i].GetComponent<Renderer>().material.mainTexture );
-            //DestroyImmediate( paintings_[i].GetComponent<Renderer>().material.mainTexture, true );
-            Destroy( paintings_[i].GetComponent<Renderer>().materials[2].mainTexture );
+            paintingsObjects_[i].DeleteTexture();
         }
         System.GC.Collect();
 
@@ -215,65 +219,50 @@ public class FileExplorer : MonoBehaviour
             "\n\nCreation time:\n" + directoryInfo_.CreationTime +
             "\n\nImages count: " + imageFiles_.Count +
             "\n\nStatues count: " + otherFiles_.Count;
-
-        //Debug.Log( "----------------------------------" );
-        //foreach( string file in Directory.GetFiles( path ) )
-        //{
-
-        //    Debug.Log( file );
-        //}
-        //Debug.Log( "----------------------------------" );
     }
 
     void HideEverything()
     {
-        exitDoors_.SetActive( false );
-        foreach( GameObject obj in doors_ )
+        exitDoorsObject_.Deactivate();
+        foreach( ObjectProperties obj in doorsObjects_ )
         {
-            obj.SetActive( false );
+            obj.Deactivate();
         }
-        foreach( GameObject obj in paintings_ )
+        foreach( ObjectProperties obj in paintingsObjects_ )
         {
-            obj.SetActive( false );
+            obj.Deactivate();
         }
-        foreach( GameObject obj in statues_ )
+        foreach( ObjectProperties obj in statuesObjects_ )
         {
-            obj.SetActive( false );
+            obj.Deactivate();
         }
+        pileOfPaintings_.SetActive( false );
     }
 
     void ShowObjects()
     {
         if( directoryInfo_.Parent != null )
         {
-            exitDoors_.SetActive( true );
-            exitDoors_.GetComponentInChildren<TextMesh>().text = directoryInfo_.Parent.FullName;
+            exitDoorsObject_.Activate();
+            exitDoorsObject_.SetName( directoryInfo_.Parent.Name );
+            exitDoorsObject_.SetFullName( directoryInfo_.Parent.FullName );
         }
 
         foldersDropdown_.ClearOptions();
         for( int i = 0; i < directories_.Count; i++ )
         {
-            if( i < doors_.Count )
+            if( i < doorsObjects_.Count )
             {
-                doors_[i].SetActive( true );
-                /* TEST */
-                doors_[i].GetComponentInChildren<TextMesh>().text = directories_[i].Name;
-                doors_[i].name = directories_[i].FullName;
-
-                //// TODO: Write 'More directories ...' on the last door
-                //doors_[i - 1].GetComponentInChildren<TextMesh>().text = "More directories ...";
-                //doors_[i - 1].name = "More directories ...";
-
-                //foldersDropdown_.ClearOptions();
-                //foldersDropdown_.options.Add( new Dropdown.OptionData( directories_[i].Name ) );
-                //break;
+                doorsObjects_[i].Activate();
+                doorsObjects_[i].SetName( directories_[i].Name );
+                doorsObjects_[i].SetFullName( directories_[i].FullName );
             }
-            else if( i == doors_.Count )
+            else if( i == doorsObjects_.Count )
             {
-                // TODO: Write 'More directories ...' on the last door
-                doors_[i - 1].GetComponentInChildren<TextMesh>().text = "More directories ...";
-                doors_[i - 1].name = "More directories ...";
+                doorsObjects_[i - 1].SetName( "More directories ..." );
+                doorsObjects_[i - 1].SetFullName( "More directories ..." );
 
+                foldersDropdown_.options.Add( new Dropdown.OptionData( directories_[i - 1].Name ) );
                 foldersDropdown_.options.Add( new Dropdown.OptionData( directories_[i].Name ) );
                 foldersDropdown_.value = 0;
                 foldersDropdown_.GetComponentInChildren<Text>().text = foldersDropdown_.options[0].text;
@@ -286,22 +275,31 @@ public class FileExplorer : MonoBehaviour
 
         for( int i = 0; i < imageFiles_.Count; i++ )
         {
-            if( i >= 10 ) // TODO: MAX_PAINTINGS
+            if( i == 9 ) // Last painting // TODO: MAX_PAINTINGS
             {
-                // Hide last painting on the wall
-                paintings_[i - 1].SetActive( false );
-                // Show pile of paintings (on floor)
-                paintings_[i].SetActive( true );
-                /* TEST */
-                paintings_[i].GetComponentInChildren<TextMesh>().text = "More images ...";
-                paintings_[i].name = "More images ...";
-                // TODO: Show pile of paintings and render the 11th as the top one
+                paintingsObjects_[i].Activate();
+                paintingsObjects_[i].SetName( "More images ..." );
+                paintingsObjects_[i].SetFullName( "More images ..." );
+
+                if( imageFiles_.Count > 10 )
+                {
+                    paintingsObjects_[i].transform.position = lastPaintingFloorPosition_;
+                    paintingsObjects_[i].transform.rotation = lastPaintingFloorRotation_;
+                    // Show pile on floor
+                    pileOfPaintings_.SetActive( true );
+                }
+                else
+                {
+                    paintingsObjects_[i].transform.position = lastPaintingWallPosition_;
+                    paintingsObjects_[i].transform.rotation = lastPaintingWallRotation_;
+                    // Hide pile on floor
+                    pileOfPaintings_.SetActive( false );
+                }
                 break;
             }
-            paintings_[i].SetActive( true );
-            /* TEST */
-            paintings_[i].GetComponentInChildren<TextMesh>().text = imageFiles_[i].Name;
-            paintings_[i].name = imageFiles_[i].FullName;
+            paintingsObjects_[i].Activate();
+            paintingsObjects_[i].SetName( imageFiles_[i].Name );
+            paintingsObjects_[i].SetFullName( imageFiles_[i].FullName );
             //
             //SetPaintingsTextures( i );
         }
@@ -309,19 +307,19 @@ public class FileExplorer : MonoBehaviour
         filesScrollView_.content.GetComponent<Text>().text = "";
         for( int i = 0; i < otherFiles_.Count; i++ )
         {
-            if( i < statues_.Count )
+            if( i < statuesObjects_.Count )
             {
-                statues_[i].SetActive( true );
-                /* TEST */
-                statues_[i].GetComponentInChildren<TextMesh>().text = otherFiles_[i].Name;
-                statues_[i].name = otherFiles_[i].FullName;
+                statuesObjects_[i].Activate();
+                statuesObjects_[i].SetName( otherFiles_[i].Name );
+                statuesObjects_[i].SetFullName( otherFiles_[i].FullName );
             }
-            else if( i == statues_.Count )
+            else if( i == statuesObjects_.Count )
             {
-                // TODO: Write 'More files ...' on the last statue
-                statues_[i - 1].GetComponentInChildren<TextMesh>().text = "More files ...";
-                statues_[i - 1].name = "More files ...";
-                //break;
+                statuesObjects_[i - 1].SetName( "More files ..." );
+                statuesObjects_[i - 1].SetFullName( "More files ..." );
+
+                filesScrollView_.content.GetComponent<Text>().text += otherFiles_[i - 1].Name + "\n";
+                filesScrollView_.content.GetComponent<Text>().text += otherFiles_[i].Name + "\n";
             }
             else
             {
@@ -341,12 +339,13 @@ public class FileExplorer : MonoBehaviour
 
     public void ShowMoreImages()
     {
+        Cursor.lockState = CursorLockMode.None;
         showingMore_ = true;
         fadeImage_.color = Color.black;
         imagesBrowser_.gameObject.SetActive( true );
         imageNameText_.gameObject.SetActive( true );
         imageToShow_ = 9;
-        imagesBrowser_.material.mainTexture = paintings_[imageToShow_ + 1].GetComponent<Renderer>().material.mainTexture;
+        imagesBrowser_.material.mainTexture = paintingsObjects_[imageToShow_].GetTexture();
         imageNameText_.text = imageFiles_[imageToShow_].Name;
     }
 
@@ -378,6 +377,7 @@ public class FileExplorer : MonoBehaviour
 
     public void ShowMoreFiles()
     {
+        Cursor.lockState = CursorLockMode.None;
         showingMore_ = true;
         fadeImage_.color = Color.black;
         filesScrollView_.gameObject.SetActive( true );
@@ -385,6 +385,7 @@ public class FileExplorer : MonoBehaviour
 
     public void ShowMoreDirectories()
     {
+        Cursor.lockState = CursorLockMode.None;
         showingMore_ = true;
         fadeImage_.color = Color.black;
         foldersDropdown_.gameObject.SetActive( true );
@@ -409,6 +410,7 @@ public class FileExplorer : MonoBehaviour
 
     public void StopShowingMore()
     {
+        Cursor.lockState = CursorLockMode.Locked;
         showingMore_ = false;
         fadeImage_.color = Color.clear;
         filesScrollView_.gameObject.SetActive( false );
@@ -424,35 +426,50 @@ public class FileExplorer : MonoBehaviour
         //WWW www;
         //Texture2D tex;
 
-        yield return new WaitForSeconds( 0.5f );
-        for( int i = 0; i < paintings_.Count; i++ )
-        {
-            if( !paintings_[i].activeSelf  )
-            {
-                if( imageFiles_.Count > 10 )
-                {
-                    LoadImageToTexture( i, i + 1 );
+        ////yield return new WaitForSeconds( 0.5f );
+        ////for( int i = 0; i < paintings_.Count; i++ )
+        ////{
+        ////    if( !paintings_[i].activeSelf  )
+        ////    {
+        ////        if( imageFiles_.Count > 10 )
+        ////        {
+        ////            LoadImageToTexture( i, i + 1 );
 
-                    //www = new WWW( "file://" + imageFiles_[i].FullName );
-                    //tex = new Texture2D( 2, 2 );
-                    //www.LoadImageIntoTexture( tex );
-                    //paintings_[i + 1].GetComponent<Renderer>().material.mainTexture = tex;
-                }
+        ////            //www = new WWW( "file://" + imageFiles_[i].FullName );
+        ////            //tex = new Texture2D( 2, 2 );
+        ////            //www.LoadImageIntoTexture( tex );
+        ////            //paintings_[i + 1].GetComponent<Renderer>().material.mainTexture = tex;
+        ////        }
+        ////        break;
+        ////    }
+
+        ////    LoadImageToTexture( i, i );
+
+        ////    //www = new WWW( "file://" + imageFiles_[i].FullName );
+        ////    //tex = new Texture2D( 2, 2 );
+        ////    //www.LoadImageIntoTexture( tex );
+        ////    //paintings_[i].GetComponent<Renderer>().material.mainTexture = tex;
+
+
+        ////    //byte[] fileData = File.ReadAllBytes( imageFiles_[i].FullName );
+        ////    //Texture2D tex = new Texture2D( 2, 2 );
+        ////    //tex.LoadImage( fileData );
+        ////    //paintings_[i].GetComponent<Renderer>().material.mainTexture = tex;
+
+        ////    yield return null;
+        ////}
+        yield return new WaitForSeconds( 0.5f );
+        for( int i = 0; i < paintingsObjects_.Count; i++ )
+        {
+            if( !paintingsObjects_[i].IsActive() )
+            {
                 break;
+            }
+            if( i == paintingsObjects_.Count - 1 )
+            {
             }
 
             LoadImageToTexture( i, i );
-
-            //www = new WWW( "file://" + imageFiles_[i].FullName );
-            //tex = new Texture2D( 2, 2 );
-            //www.LoadImageIntoTexture( tex );
-            //paintings_[i].GetComponent<Renderer>().material.mainTexture = tex;
-
-
-            //byte[] fileData = File.ReadAllBytes( imageFiles_[i].FullName );
-            //Texture2D tex = new Texture2D( 2, 2 );
-            //tex.LoadImage( fileData );
-            //paintings_[i].GetComponent<Renderer>().material.mainTexture = tex;
 
             yield return null;
         }
@@ -463,14 +480,25 @@ public class FileExplorer : MonoBehaviour
         //WWW www = new WWW( "file://" + imageFiles_[imageID].FullName );
         //Texture2D tex = new Texture2D( 2, 2 );
         //www.LoadImageIntoTexture( tex );
-        paintings_[paintingID].GetComponent<Renderer>().materials[2].mainTexture = GetImageAsTexture( imageID );//tex;
+
+
+        //paintings_[paintingID].GetComponent<Renderer>().materials[2].mainTexture = GetImageAsTexture( imageID );//tex;
+
+        paintingsObjects_[paintingID].SetTexture( GetImageAsTexture( imageID ) );
     }
 
     Texture2D GetImageAsTexture( int imageID )
     {
+        print( Time.realtimeSinceStartup );
         WWW www = new WWW( "file://" + imageFiles_[imageID].FullName );
         Texture2D tex = new Texture2D( 2, 2 );
         www.LoadImageIntoTexture( tex );
+
+        //byte[] fileData = File.ReadAllBytes( imageFiles_[imageID].FullName );
+        //Texture2D tex = new Texture2D( 2, 2 );
+        //tex.LoadImage( fileData );
+
+        print( Time.realtimeSinceStartup );
         return tex;
     }
 
@@ -545,7 +573,7 @@ public class FileExplorer : MonoBehaviour
     {
         bFinishedCopying = true;
         Debug.Log( "Finished Copying Texture" );
-        paintings_[imageProcessed++].GetComponent<Renderer>().material.mainTexture = m_myTexture;
+        //paintings_[imageProcessed++].GetComponent<Renderer>().material.mainTexture = m_myTexture;
         //Do something else
     }
 }

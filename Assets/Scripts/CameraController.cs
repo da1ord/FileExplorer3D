@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class CameraController : MonoBehaviour
+public class CameraController :MonoBehaviour
 {
     // Hit variable for raycasting
     RaycastHit hit_;
@@ -21,7 +21,7 @@ public class CameraController : MonoBehaviour
     // Walking speed constant
     const float walkingSpeed_ = 5.0f;
     // Running speed constant
-    const float runningtSpeed_ = 8.0f;
+    const float runningSpeed_ = 8.0f;
 
     // Initialization
     void Start()
@@ -62,22 +62,14 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        if( Input.GetKey( KeyCode.LeftShift ) )
-        {
-            movementSpeed_ = runningtSpeed_;
-        }
-        else
-        {
-            movementSpeed_ = walkingSpeed_;
-        }
-
         // Interaction with objects
         // Left mouse button pressed
         if( Input.GetMouseButtonDown( 0 ) )
         {
-            if( Physics.Raycast( transform.position, transform.forward, 
+            if( Physics.Raycast( transform.position, transform.forward,
                 out hit_, 3.0f, LayerMask.GetMask( "Interactable" ) ) )
             {
+                ObjectProperties op = hit_.collider.gameObject.GetComponent<ObjectProperties>();
                 Debug.Log( "----" );
                 if( hit_.collider.CompareTag( "ExitDoors" ) )
                 {
@@ -87,20 +79,20 @@ public class CameraController : MonoBehaviour
                 else if( hit_.collider.CompareTag( "Doors" ) )
                 {
                     Debug.Log( "Doors" );
-                    if( hit_.collider.name == "More directories ..." )
+                    if( op.GetName() == "More directories ..." )//if( hit_.collider.name == "More directories ..." )
                     {
                         Debug.Log( "More directories" );
                         fileExplorer_.ShowMoreDirectories();
                     }
                     else
                     {
-                        fileExplorer_.SetPath( hit_.collider.name );
+                        fileExplorer_.SetPath( op.GetFullName() );//fileExplorer_.SetPath( hit_.collider.name );
                         fileExplorer_.ChangeDirectory();
                     }
                 }
                 else if( hit_.collider.CompareTag( "Painting" ) )
                 {
-                    if( hit_.collider.name == "More images ..." )
+                    if( op.GetName() == "More images ..." )//if( hit_.collider.name == "More images ..." )
                     {
                         Debug.Log( "More images" );
                         fileExplorer_.ShowMoreImages();
@@ -112,7 +104,7 @@ public class CameraController : MonoBehaviour
                 }
                 else if( hit_.collider.CompareTag( "Statue" ) )
                 {
-                    if( hit_.collider.name == "More files ..." )
+                    if( op.GetName() == "More files ..." )//if( hit_.collider.name == "More files ..." )
                     {
                         Debug.Log( "More files" );
                         fileExplorer_.ShowMoreFiles();
@@ -124,6 +116,23 @@ public class CameraController : MonoBehaviour
                 }
                 Debug.Log( hit_.collider.name );
             }
+        }
+
+        // Player/camera movement
+        Movement();
+    }
+
+    // Player/camera movement handling
+    void Movement()
+    {
+        // Running/walking
+        if( Input.GetKey( KeyCode.LeftShift ) )
+        {
+            movementSpeed_ = runningSpeed_;
+        }
+        else
+        {
+            movementSpeed_ = walkingSpeed_;
         }
 
         // Strafing - A, D
