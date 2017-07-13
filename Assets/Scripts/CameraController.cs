@@ -9,7 +9,7 @@ public class CameraController :MonoBehaviour
     RaycastHit hit_;
     // Player rigidbody
     Rigidbody rb_;
-
+    // Fileexplorer instance
     FileExplorer fileExplorer_;
 
     // Mouse around x-axis rotation
@@ -27,10 +27,7 @@ public class CameraController :MonoBehaviour
     void Start()
     {
         rb_ = transform.parent.GetComponent<Rigidbody>();
-
         fileExplorer_ = GameObject.Find( "Canvas" ).GetComponent<FileExplorer>();
-
-        Cursor.lockState = CursorLockMode.Locked;
     }
 
     // Update call
@@ -70,51 +67,31 @@ public class CameraController :MonoBehaviour
                 out hit_, 3.0f, LayerMask.GetMask( "Interactable" ) ) )
             {
                 ObjectProperties op = hit_.collider.gameObject.GetComponent<ObjectProperties>();
-                Debug.Log( "----" );
-                if( hit_.collider.CompareTag( "ExitDoors" ) )
+                if( hit_.collider.CompareTag( "Doors" ) )
                 {
-                    fileExplorer_.GoUp();
-                    fileExplorer_.ChangeDirectory();
-                }
-                else if( hit_.collider.CompareTag( "Doors" ) )
-                {
-                    Debug.Log( "Doors" );
                     if( op.GetName() == "More directories ..." )//if( hit_.collider.name == "More directories ..." )
                     {
-                        Debug.Log( "More directories" );
                         fileExplorer_.ShowMoreDirectories();
                     }
                     else
                     {
-                        fileExplorer_.SetPath( op.GetFullName() );//fileExplorer_.SetPath( hit_.collider.name );
-                        fileExplorer_.ChangeDirectory();
+                        fileExplorer_.ChangeDirectory( op.GetFullName() );
                     }
                 }
                 else if( hit_.collider.CompareTag( "Painting" ) )
                 {
                     if( op.GetName() == "More images ..." )//if( hit_.collider.name == "More images ..." )
                     {
-                        Debug.Log( "More images" );
                         fileExplorer_.ShowMoreImages();
-                    }
-                    else
-                    {
-                        Debug.Log( "Painting" );
                     }
                 }
                 else if( hit_.collider.CompareTag( "Statue" ) )
                 {
                     if( op.GetName() == "More files ..." )//if( hit_.collider.name == "More files ..." )
                     {
-                        Debug.Log( "More files" );
                         fileExplorer_.ShowMoreFiles();
                     }
-                    else
-                    {
-                        Debug.Log( "Statue" );
-                    }
                 }
-                Debug.Log( hit_.collider.name );
             }
         }
 

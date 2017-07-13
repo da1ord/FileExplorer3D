@@ -10,9 +10,14 @@ public class ObjectProperties : MonoBehaviour
 
     Texture2D tex_;
     bool orientation_;
-
-	// Use this for initialization
-	void Start()
+    Vector3 orientationVector_ = new Vector3( 220f, 10f, 165f );
+    
+    /**/
+    Vector3 lastPaintingFloorPosition_ = new Vector3( 14f, 1.57f, -9.065f );
+    /**/
+    
+    // Use this for initialization
+    void Start()
     {
         objectName_ = "Object";
         fullName_ = "Object";
@@ -64,6 +69,15 @@ public class ObjectProperties : MonoBehaviour
     {
         tex_ = tex;
         gameObject.GetComponent<Renderer>().materials[2].mainTexture = tex_;
+
+        if( tex.height > tex.width )
+        {
+            SetVertical();
+        }
+        else
+        {
+            SetHorizontal();
+        }
     }
     public Texture2D GetTexture()
     {
@@ -76,9 +90,27 @@ public class ObjectProperties : MonoBehaviour
     public void SetHorizontal()
     {
         orientation_ = false;
+        transform.localScale = orientationVector_;
     }
     public void SetVertical()
     {
         orientation_ = true;
+        transform.localScale = new Vector3( orientationVector_.z, orientationVector_.y, orientationVector_.x );
+    }
+    public void PolishPosition()
+    {
+        if( active_ )
+        {
+            // Vertical position
+            if( orientation_ )
+            {
+                transform.position = new Vector3( lastPaintingFloorPosition_.x, lastPaintingFloorPosition_.y + 0.5f, lastPaintingFloorPosition_.z - 0.12f );
+            }
+            // Horizontal position
+            else
+            {
+                transform.position = lastPaintingFloorPosition_;
+            }
+        }
     }
 }

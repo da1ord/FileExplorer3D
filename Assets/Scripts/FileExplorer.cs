@@ -2,12 +2,17 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class FileExplorer : MonoBehaviour
 {
-    public InputField path_;
+    public Text textAppName_;
+    public InputField pathInputField_;
+    public Button btnBrowseFolders_;
+    public Button btnReturn_;
+    public Button btnQuit_;
     public Button btnEnterDirectory_;
     public Text imageNameText_;
     public Image fadeImage_;
@@ -38,9 +43,9 @@ public class FileExplorer : MonoBehaviour
     int imageToShow_;
 
     Vector3 lastPaintingWallPosition_ = new Vector3( 15f, 4f, -10f );
-    Vector3 lastPaintingFloorPosition_ = new Vector3( 14f, 1.94f, -9f );
+    Vector3 lastPaintingFloorPosition_ = new Vector3( 14f, 1.57f, -9.065f );
     Quaternion lastPaintingWallRotation_ = Quaternion.Euler( -90f, 0f, 0f );
-    Quaternion lastPaintingFloorRotation_ = Quaternion.Euler( -100f, 0f, 0f );
+    Quaternion lastPaintingFloorRotation_ = Quaternion.Euler( -105f, 0f, 0f );
     /**TEST
      */
     Texture2D m_myTexture;
@@ -54,6 +59,9 @@ public class FileExplorer : MonoBehaviour
         imageFiles_ = new List<FileInfo>();
         otherFiles_ = new List<FileInfo>();
 
+        btnBrowseFolders_.onClick.AddListener( BrowseFolders );
+        btnReturn_.onClick.AddListener( HideIntroScreen );
+        btnQuit_.onClick.AddListener( QuitApplication );
         btnEnterDirectory_.onClick.AddListener( EnterDirectory );
 
         // Fill objects lists
@@ -82,11 +90,7 @@ public class FileExplorer : MonoBehaviour
         roomInfo_ = GameObject.Find( "InfoSign" ).GetComponentInChildren<TextMesh>();
 
         player_ = GameObject.Find( "Player" );
-        /* TEST */
-        path_.text = "D:/Photos";
         
-        // TODO: Get directory info from last directory dirs list
-        directoryInfo_ = new DirectoryInfo( path_.text );
 
         fading_ = false;
         showingMore_ = false;
@@ -99,24 +103,66 @@ public class FileExplorer : MonoBehaviour
         btnEnterDirectory_.gameObject.SetActive( false );
         imageNameText_.gameObject.SetActive( false );
 
-        /*TEST*/
-        /* ASYNC LOAD */
-        //GetDirectoryInfo();
 
-        ///* HIDE EVERYTHING */
-        //HideEverything();
-
-        ///* SHOW DOORS/PAINTINGS/STATUES */
-        //ShowObjects();
-
-        //// Set paintings textures
-        //StartCoroutine( SetPaintingsTextures() );
-        ChangeDirectory();
+        /*Test*/
+        HideIntroScreen();
+        ChangeDirectory( "D:/Photos" );
+        
+        /*Use this v*/
+        //ShowIntroScreen();
     }
 
     // Update is called once per frame
     void Update()
     {
+    }
+
+    void ShowIntroScreen()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        fadeImage_.color = Color.black;
+
+        textAppName_.gameObject.SetActive( true );
+        pathInputField_.gameObject.SetActive( true );
+        btnBrowseFolders_.gameObject.SetActive( true );
+        btnQuit_.gameObject.SetActive( true );
+        
+        if( directoryInfo_ != null )
+        {
+            btnReturn_.gameObject.SetActive( true );
+        }
+    }
+
+    void HideIntroScreen()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        fadeImage_.color = Color.clear;
+
+        textAppName_.gameObject.SetActive( false );
+        pathInputField_.gameObject.SetActive( false );
+        btnBrowseFolders_.gameObject.SetActive( false );
+        btnQuit_.gameObject.SetActive( false );
+
+        if( directoryInfo_ != null )
+        {
+            btnReturn_.gameObject.SetActive( false );
+        }
+    }
+
+    void BrowseFolders()
+    {
+        string path = EditorUtility.OpenFolderPanel( "Select directory", "", "" );
+        if( path != "" )
+        {
+            //directoryInfo_ = new DirectoryInfo( path );
+            HideIntroScreen();
+            ChangeDirectory( path );
+        }
+    }
+
+    void QuitApplication()
+    {
+        Application.Quit();
     }
 
     IEnumerator FadeAnimation()
@@ -150,11 +196,13 @@ public class FileExplorer : MonoBehaviour
 
     public void GoUp()
     {
-        path_.text = directoryInfo_.Parent.FullName;
+        directoryInfo_ = new DirectoryInfo( exitDoorsObject_.GetFullName() );
     }
 
-    public void ChangeDirectory()
+    public void ChangeDirectory( string path )
     {
+        directoryInfo_ = new DirectoryInfo( path );
+
         /* FADE OUT/IN */
         StartCoroutine( FadeAnimation() );
 
@@ -169,11 +217,6 @@ public class FileExplorer : MonoBehaviour
 
         // Set paintings textures
         StartCoroutine( SetPaintingsTextures() );
-
-        //for( int i = 0; i < 9; i++ )
-        //{
-        //    StartCoroutine( downloadTexture( i ) );
-        //}
     }
 
     void GetDirectoryInfo()
@@ -181,7 +224,7 @@ public class FileExplorer : MonoBehaviour
         // TODO: Use this
         //string path = directoryInfo_.FullName;
         /* TEST */
-        directoryInfo_ = new DirectoryInfo( path_.text );
+        //directoryInfo_ = new DirectoryInfo( pathInputField_.text );
         string path = directoryInfo_.FullName;
 
         // Cleanup
@@ -278,13 +321,15 @@ public class FileExplorer : MonoBehaviour
             if( i == 9 ) // Last painting // TODO: MAX_PAINTINGS
             {
                 paintingsObjects_[i].Activate();
-                paintingsObjects_[i].SetName( "More images ..." );
-                paintingsObjects_[i].SetFullName( "More images ..." );
+                //paintingsObjects_[i].SetName( "More images ..." );
+                //paintingsObjects_[i].SetFullName( "More images ..." );
 
                 if( imageFiles_.Count > 10 )
                 {
                     paintingsObjects_[i].transform.position = lastPaintingFloorPosition_;
                     paintingsObjects_[i].transform.rotation = lastPaintingFloorRotation_;
+                    paintingsObjects_[i].SetName( "More images ..." );
+                    paintingsObjects_[i].SetFullName( "More images ..." );
                     // Show pile on floor
                     pileOfPaintings_.SetActive( true );
                 }
@@ -292,6 +337,8 @@ public class FileExplorer : MonoBehaviour
                 {
                     paintingsObjects_[i].transform.position = lastPaintingWallPosition_;
                     paintingsObjects_[i].transform.rotation = lastPaintingWallRotation_;
+                    paintingsObjects_[i].SetName( imageFiles_[i].Name );
+                    paintingsObjects_[i].SetFullName( imageFiles_[i].FullName );
                     // Hide pile on floor
                     pileOfPaintings_.SetActive( false );
                 }
@@ -330,7 +377,7 @@ public class FileExplorer : MonoBehaviour
 
     public void SetPath( string path )
     {
-        path_.text = path;
+        pathInputField_.text = path;
     }
     public bool IsFading()
     {
@@ -397,9 +444,8 @@ public class FileExplorer : MonoBehaviour
         string folder = foldersDropdown_.GetComponentInChildren<Text>().text;
         if( folder != "" )
         {
-            path_.text = directoryInfo_.FullName + "\\" + folder;
             StopShowingMore();
-            ChangeDirectory();
+            ChangeDirectory( directoryInfo_.FullName + "/" + folder );
         }
     }
 
@@ -465,13 +511,15 @@ public class FileExplorer : MonoBehaviour
             {
                 break;
             }
-            if( i == paintingsObjects_.Count - 1 )
-            {
-            }
 
             LoadImageToTexture( i, i );
 
             yield return null;
+        }
+
+        if( imageFiles_.Count > paintingsObjects_.Count )
+        {
+            paintingsObjects_[paintingsObjects_.Count - 1].PolishPosition();
         }
     }
 
@@ -489,7 +537,6 @@ public class FileExplorer : MonoBehaviour
 
     Texture2D GetImageAsTexture( int imageID )
     {
-        print( Time.realtimeSinceStartup );
         WWW www = new WWW( "file://" + imageFiles_[imageID].FullName );
         Texture2D tex = new Texture2D( 2, 2 );
         www.LoadImageIntoTexture( tex );
@@ -497,8 +544,6 @@ public class FileExplorer : MonoBehaviour
         //byte[] fileData = File.ReadAllBytes( imageFiles_[imageID].FullName );
         //Texture2D tex = new Texture2D( 2, 2 );
         //tex.LoadImage( fileData );
-
-        print( Time.realtimeSinceStartup );
         return tex;
     }
 
