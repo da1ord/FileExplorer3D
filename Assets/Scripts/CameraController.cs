@@ -36,7 +36,7 @@ public class CameraController :MonoBehaviour
     void Update()
     {
         // Return when during fading phase
-        if( fileExplorer_.IsFading() )
+        if( fileExplorer_.IsFading() || fileExplorer_.IsShowingIntro() )
         {
             return;
         }

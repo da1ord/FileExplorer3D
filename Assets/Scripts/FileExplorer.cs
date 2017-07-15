@@ -15,6 +15,8 @@ public class FileExplorer : MonoBehaviour
     //
     // Application text name on menu screen
     public Text textAppName_;
+    // Toggle for enabling of asynchronous loading of images
+    public Toggle tglAsyncLoading_;
     // Browse folders button
     public Button btnBrowseFolders_;
     // Return to scene button
@@ -74,6 +76,8 @@ public class FileExplorer : MonoBehaviour
     bool showingMoreObjects_;
     // Index of image to show when browsing 'pile' of images
     int imageToShow_;
+    // Flag indicating if fade to black is over
+    bool blackScreen_;
 
     // 10th painting position vector if hanging on the wall
     Vector3 lastPaintingWallPosition_ = new Vector3( 15f, 4f, -10f );
@@ -84,11 +88,6 @@ public class FileExplorer : MonoBehaviour
     // 10th painting rotation quaternion if on the floor
     Quaternion lastPaintingFloorRotation_ = Quaternion.Euler( -105f, 0f, 0f );
     
-    /*TEST*/
-    Texture2D m_myTexture;
-    bool bFinishedCopying = false;
-    int imageProcessed = 0;
-
     // Initialization
     void Start()
     {
@@ -100,7 +99,7 @@ public class FileExplorer : MonoBehaviour
         // Initialize exit door object
         exitDoorsObject_ = GameObject.Find( "Scene/ExitDoors" ).GetComponentInChildren<DirectoryProperties>();
         //
-        // Initialize and fill objects lists
+        // Initialize scene objects
         //
         // Initialize and fill doors objects list
         doorsObjects_ = new List<DirectoryProperties>();
@@ -125,7 +124,6 @@ public class FileExplorer : MonoBehaviour
             if( child.gameObject.GetComponent<ObjectProperties>() != null )
                 statuesObjects_.Add( child.gameObject.GetComponent<ObjectProperties>() );
         }
-
         // Initialize room text info object
         roomInfo_ = GameObject.Find( "InfoSign" ).GetComponentInChildren<TextMesh>();
 
@@ -140,6 +138,8 @@ public class FileExplorer : MonoBehaviour
         showingMoreObjects_ = false;
         // Set image to show for images browsing
         imageToShow_ = 9;
+        // Clear black screen flag
+        blackScreen_ = false;
 
         // Hide UI elements
         foldersDropdown_.gameObject.SetActive( false );
@@ -154,7 +154,6 @@ public class FileExplorer : MonoBehaviour
         btnReturn_.onClick.AddListener( HideIntroScreen );
         btnQuit_.onClick.AddListener( QuitApplication );
         btnEnterDirectory_.onClick.AddListener( EnterDirectory );
-
 
         /*Test*/
         if( true )
@@ -185,6 +184,8 @@ public class FileExplorer : MonoBehaviour
 
         // Show application name
         textAppName_.gameObject.SetActive( true );
+        // Show async loading toggle
+        tglAsyncLoading_.gameObject.SetActive( true );
         // Show button for browsing directories
         btnBrowseFolders_.gameObject.SetActive( true );
         // Show quit button
@@ -209,6 +210,8 @@ public class FileExplorer : MonoBehaviour
 
         // Hide application name
         textAppName_.gameObject.SetActive( false );
+        // Hide async loading toggle
+        tglAsyncLoading_.gameObject.SetActive( false );
         // Hide button for browsing directories
         btnBrowseFolders_.gameObject.SetActive( false );
         // Hide quit button
@@ -249,132 +252,6 @@ public class FileExplorer : MonoBehaviour
         #endif
     }
 
-    // Fade in/out animation coroutine
-    IEnumerator FadeAnimation()
-    {
-        // Set fading flag
-        fading_ = true;
-
-        // If fade image is already black, skip fading to black
-        if( fadeImage_.color.a < 1.0f )
-        {
-            // Loop for almost 1 second
-            for( float i = 0.0f; i <= 1.0f; i += 2 * Time.deltaTime )
-            {
-                // Fade from transparent to opaque
-                fadeImage_.color = new Color( 0.0f, 0.0f, 0.0f, i );
-                yield return null;
-            }
-        }
-        // Set fade image to black. Just for sure
-        fadeImage_.color = Color.black;
-
-        /* TODO: Test */
-        //// Get actual directory info. Load files into lists
-        //GetDirectoryInfo();
-
-        //// Hide every object in scene
-        HideEverything();
-
-        //// Show only objects that should be visible in scene
-        //ShowObjects();
-        /**/
-
-        // Reset players position and rotation
-        player_.GetComponent<Rigidbody>().MovePosition( defaultPlayerPosition_ );
-        player_.GetComponent<Rigidbody>().MoveRotation( defaultPlayerRotation_ );
-
-        // Wait for 2s to avoid laggy scene
-        yield return new WaitForSeconds( 2 );
-        // Loop for almost 1 second
-        for( float i = 0.0f; i <= 1.0f; i += Time.deltaTime )
-        {
-            // Fade from opaque to transparent
-            fadeImage_.color = new Color( 0.0f, 0.0f, 0.0f, 1.0f - i );
-            yield return null;
-        }
-        // Set fade image to transparent. Just for sure
-        fadeImage_.color = Color.clear;
-
-        // Clear fading flag
-        fading_ = false;
-        yield return null;
-    }
-
-    // Function for directory changing
-    public void ChangeDirectory( string path )
-    {
-        // Set directory info from given path
-        directoryInfo_ = new DirectoryInfo( path );
-
-        // Start fade coroutine
-        StartCoroutine( FadeAnimation() );
-
-        // Get actual directory info. Load files into lists
-        GetDirectoryInfo();
-
-        //// Hide every object in scene
-        //HideEverything();
-
-        //// Show only objects that should be visible in scene
-        //ShowObjects();
-
-        // Set paintings textures
-        StartCoroutine( SetPaintingsTextures() );
-    }
-
-    // Get actual directory info. Fill images, other files, and directories info lists
-    void GetDirectoryInfo()
-    {
-        // Get actual path
-        string path = directoryInfo_.FullName;
-
-        //
-        // Cleanup
-        //
-        // Clear directories info list
-        directories_.Clear();
-        // Clear images info list
-        imageFiles_.Clear();
-        // Clear other files info list
-        otherFiles_.Clear();
-        
-        //// Delete paintings' textures
-        //for( int i = 0; i < paintingsObjects_.Count; i++ )
-        //{
-        //    paintingsObjects_[i].DeleteTexture();
-        //}
-        //// Force garbage collection
-        //System.GC.Collect();
-
-        // Fill directories info list
-        foreach( string folderName in Directory.GetDirectories( path ) )
-        {
-            directories_.Add( new DirectoryInfo( folderName ) );
-        }
-
-        // Fill images and other files info lists
-        foreach( string filename in Directory.GetFiles( path ) )
-        {
-            FileInfo file = new FileInfo( filename );
-            if( Regex.IsMatch( filename.ToLower(), @".jpg|.png$" ) )
-            {
-                imageFiles_.Add( file );
-            }
-            else
-            {
-                otherFiles_.Add( file );
-            }
-        }
-
-        // Set room info text 
-        roomInfo_.text = 
-            "Room name:\n" + directoryInfo_.Name + 
-            "\n\nCreation time:\n" + directoryInfo_.CreationTime +
-            "\n\nImages count: " + imageFiles_.Count +
-            "\n\nStatues count: " + otherFiles_.Count;
-    }
-
     // Hide objects in scene
     void HideEverything()
     {
@@ -399,7 +276,7 @@ public class FileExplorer : MonoBehaviour
         pileOfPaintings_.SetActive( false );
     }
 
-    // Show objects in scene
+    // Show objects in scene and set their names
     void ShowObjects()
     {
         // Check if not in root directory
@@ -442,27 +319,25 @@ public class FileExplorer : MonoBehaviour
                 foldersDropdown_.options.Add( new Dropdown.OptionData( directories_[i].Name ) );
             }
         }
-
+        
         // Go through images list
         for( int i = 0; i < imageFiles_.Count; i++ )
         {
             // Show paintings and set painting name and full path
             paintingsObjects_[i].Activate();
             paintingsObjects_[i].SetName( imageFiles_[i].Name );
-            //paintingsObjects_[i].SetFullName( imageFiles_[i].FullName );
 
             // Last painting
             if( i == paintingsObjects_.Count - 1 )
             {
                 // If there is more images than paintings
-                if( imageFiles_.Count > 10 )
+                if( imageFiles_.Count > paintingsObjects_.Count )
                 {
                     // Set last painting position on floor
                     paintingsObjects_[i].transform.position = lastPaintingFloorPosition_;
                     paintingsObjects_[i].transform.rotation = lastPaintingFloorRotation_;
                     // Set last painting name to 'More images ...'
                     paintingsObjects_[i].SetName( "More images ..." );
-                    //paintingsObjects_[i].SetFullName( "More images ..." );
                     // Show pile of paintings on floor
                     pileOfPaintings_.SetActive( true );
                 }
@@ -488,13 +363,11 @@ public class FileExplorer : MonoBehaviour
             {
                 statuesObjects_[i].Activate();
                 statuesObjects_[i].SetName( otherFiles_[i].Name );
-                //statuesObjects_[i].SetFullName( otherFiles_[i].FullName );
             }
             // There is more other files than statues
             else if( i == statuesObjects_.Count )
             {
                 statuesObjects_[i - 1].SetName( "More files ..." );
-                //statuesObjects_[i - 1].SetFullName( "More files ..." );
 
                 filesScrollView_.content.GetComponent<Text>().text += otherFiles_[i - 1].Name + "\n";
                 filesScrollView_.content.GetComponent<Text>().text += otherFiles_[i].Name + "\n";
@@ -507,12 +380,195 @@ public class FileExplorer : MonoBehaviour
         }
     }
 
-    // Return fading flag
-    public bool IsFading()
+    // Function for directory changing
+    public void ChangeDirectory( string path )
     {
-        return fading_;
+        // Set directory info from given path
+        directoryInfo_ = new DirectoryInfo( path );
+
+        // Get actual directory info. Load files into lists
+        GetDirectoryInfo();
+
+        // TODO: In case of async texture loading, stop all running coroutines
+        StopAllCoroutines();
+
+        // Start fade coroutine
+        StartCoroutine( FadeAnimation() );
+
+        // Set paintings textures
+        StartCoroutine( SetPaintingsTextures() );
     }
 
+    // Get actual directory info. Fill images, other files, and directories info lists
+    void GetDirectoryInfo()
+    {
+        // Get actual path
+        string path = directoryInfo_.FullName;
+
+        //
+        // Cleanup
+        //
+        // Clear directories info list
+        directories_.Clear();
+        // Clear images info list
+        imageFiles_.Clear();
+        // Clear other files info list
+        otherFiles_.Clear();
+
+        // Fill directories info list
+        foreach( string folderName in Directory.GetDirectories( path ) )
+        {
+            directories_.Add( new DirectoryInfo( folderName ) );
+        }
+
+        // Fill images and other files info lists
+        foreach( string filename in Directory.GetFiles( path ) )
+        {
+            FileInfo file = new FileInfo( filename );
+            if( Regex.IsMatch( filename.ToLower(), @".jpg|.png$" ) )
+            {
+                imageFiles_.Add( file );
+            }
+            else
+            {
+                otherFiles_.Add( file );
+            }
+        }
+
+        // Set room info text 
+        roomInfo_.text =
+            "Room name:\n" + directoryInfo_.Name +
+            "\n\nCreation time:\n" + directoryInfo_.CreationTime +
+            "\n\nImages count: " + imageFiles_.Count +
+            "\n\nStatues count: " + otherFiles_.Count;
+    }
+
+    // Fade in/out animation coroutine
+    IEnumerator FadeAnimation()
+    {
+        // Set fading flag
+        fading_ = true;
+
+        // If fade image is already black, skip fading to black part
+        if( fadeImage_.color.a < 1.0f )
+        {
+            // Loop for almost 1 second
+            for( float i = 0.0f; i <= 1.0f; i += 2 * Time.deltaTime )
+            {
+                // Fade from transparent to opaque
+                fadeImage_.color = new Color( 0.0f, 0.0f, 0.0f, i );
+                yield return null;
+            }
+        }
+        // Set fade image to black. Just for sure
+        fadeImage_.color = Color.black;
+
+        // Hide every object in scene
+        HideEverything();
+
+        // Indicate that fade to black is over
+        blackScreen_ = true;
+
+        // Reset players position and rotation
+        player_.GetComponent<Rigidbody>().MovePosition( defaultPlayerPosition_ );
+        player_.GetComponent<Rigidbody>().MoveRotation( defaultPlayerRotation_ );
+
+        // If folder contains images wait some time to load them
+        if( imageFiles_.Count > 0 && !tglAsyncLoading_.isOn )
+        {
+            // Wait in black for 2s to avoid laggy scene
+            yield return new WaitForSeconds( 2.0f );
+        }
+        // Loop for almost 1 second
+        for( float i = 0.0f; i <= 1.0f; i += Time.deltaTime )
+        {
+            // Fade from opaque to transparent
+            fadeImage_.color = new Color( 0.0f, 0.0f, 0.0f, 1.0f - i );
+            yield return null;
+        }
+        // Set fade image to transparent. Just for sure
+        fadeImage_.color = Color.clear;
+
+        // Clear fading flag
+        fading_ = false;
+        // Clear fade to black flag
+        blackScreen_ = false;
+        yield return null;
+    }
+
+    // Coroutine for loading of textures to paintings
+    IEnumerator SetPaintingsTextures()
+    {
+        // Wait until fade to black is over to avoid seeing laggy screen
+        while( !blackScreen_ )
+        {
+            yield return new WaitForSeconds( 0.1f );
+        }
+
+        // Delete paintings' textures
+        for( int i = 0; i < paintingsObjects_.Count; i++ )
+        {
+            paintingsObjects_[i].DeleteTexture();
+        }
+        // Delete ImagesBrowser's loaded texture
+        Destroy( imagesBrowser_.material.mainTexture );
+        // Force garbage collection
+        System.GC.Collect();
+
+        // Show objects in scene
+        ShowObjects();
+
+        // Go through painting objects
+        for( int i = 0; i < paintingsObjects_.Count; i++ )
+        {
+            // When reaching not active painting, return
+            if( !paintingsObjects_[i].IsActive() )
+            {
+                break;
+            }
+
+            // Asynchronous loading of images is enabled
+            if( tglAsyncLoading_.isOn )
+            {
+                StartCoroutine( LoadImageToTextureAsync( i ) );
+            }
+            // Asynchronous loading of images is disabled
+            else
+            {
+                // Load texture and set it as painting material texture
+                LoadImageToTexture( i );
+            }
+
+            yield return null;
+        }
+    }
+
+    // Set texture as painting material texture
+    void LoadImageToTexture( int imageID )
+    {
+        paintingsObjects_[imageID].SetTexture( GetImageAsTexture( imageID ) );
+
+        // If there is more images than paintings and if this image being 
+        //  processed is for the last painting, polish the painting position
+        if( imageFiles_.Count > paintingsObjects_.Count && imageID == paintingsObjects_.Count - 1 )
+        {
+            paintingsObjects_[imageID].PolishPosition();
+        }
+    }
+
+    // Load image to texture using WWW class and return the texture
+    Texture2D GetImageAsTexture( int imageID )
+    {
+        WWW www = new WWW( "file://" + imageFiles_[imageID].FullName );
+        Texture2D tex = new Texture2D( 2, 2 );
+        www.LoadImageIntoTexture( tex );
+        return tex;
+    }
+
+    //
+    // Functions for showing/hiding UI regarding showing of more objects
+    //
+    #region Functions for showing/hiding UI regarding showing of more objects
     // Show more images. When there is more images than paintings
     public void ShowMoreImages()
     {
@@ -531,7 +587,7 @@ public class FileExplorer : MonoBehaviour
         // Set image to show ID
         imageToShow_ = 9;
         // Load first image
-        imagesBrowser_.material.mainTexture = paintingsObjects_[imageToShow_].GetTexture();
+        imagesBrowser_.material.mainTexture = GetImageAsTexture( imageToShow_ );//paintingsObjects_[imageToShow_].GetTexture();
         // Rotate image properly
         RescaleImagesBrowser();
         // Set first image name
@@ -648,18 +704,6 @@ public class FileExplorer : MonoBehaviour
         }
     }
 
-    // Return flag if showing intro screen
-    public bool IsShowingIntro()
-    {
-        return showingIntro_;
-    }
-
-    // Return flag if showing more files/directories
-    public bool IsShowingMoreObjects()
-    {
-        return showingMoreObjects_;
-    }
-
     // Hide UI elements for showing more objects files/directories
     public void StopShowingMoreObjects()
     {
@@ -682,130 +726,91 @@ public class FileExplorer : MonoBehaviour
         // Hide hint text
         textHint_.gameObject.SetActive( false );
     }
+    #endregion
 
-    // Coroutine for loading of textures to paintings
-    IEnumerator SetPaintingsTextures()
+    //
+    // Getters/setters
+    //
+    #region Getters/setters
+    // Return fading flag
+    public bool IsFading()
     {
-        // Delete paintings' textures
-        for( int i = 0; i < paintingsObjects_.Count; i++ )
-        {
-            paintingsObjects_[i].DeleteTexture();
-        }
-        // Force garbage collection
-        System.GC.Collect();
-
-        // Initial wait for fading to black
-        yield return new WaitForSeconds( 0.5f );
-        ShowObjects();
-
-        // Go through painting objects
-        for( int i = 0; i < paintingsObjects_.Count; i++ )
-        {
-            // When reaching not active painting, return
-            if( !paintingsObjects_[i].IsActive() )
-            {
-                break;
-            }
-            // Load texture and set it as painting material texture
-            LoadImageToTexture( i, i );
-
-            yield return null;
-        }
-
-        // If there is more images than paintings, polish last painting position
-        if( imageFiles_.Count > paintingsObjects_.Count )
-        {
-            paintingsObjects_[paintingsObjects_.Count - 1].PolishPosition();
-        }
+        return fading_;
     }
 
-    // Set texture as painting material texture
-    void LoadImageToTexture( int imageID, int paintingID )
+    // Return flag if showing intro screen
+    public bool IsShowingIntro()
     {
-        paintingsObjects_[paintingID].SetTexture( GetImageAsTexture( imageID ) );
+        return showingIntro_;
     }
 
-    // Load image to texture and return the texture
-    Texture2D GetImageAsTexture( int imageID )
+    // Return flag if showing more files/directories
+    public bool IsShowingMoreObjects()
     {
-        WWW www = new WWW( "file://" + imageFiles_[imageID].FullName );
-        Texture2D tex = new Texture2D( 2, 2 );
-        www.LoadImageIntoTexture( tex );
-        return tex;
+        return showingMoreObjects_;
     }
+    #endregion
 
-    /***TEST*****************
-     * 
-     * 
-     * testing code for asynchronous texture loading
-     * 
-     * 
-     * *********************/
 
-    IEnumerator downloadTexture( int imageID )
+    //
+    // Asynchronous texture loading functions
+    //
+    // Set texture as painting material texture - asynchronous
+    IEnumerator LoadImageToTextureAsync( int imageID )
     {
-        bFinishedCopying = false;
         WWW www = new WWW( "file://" + imageFiles_[imageID].FullName );
         yield return www;
 
-        //m_myTexture = www.texture;  // Commenting this line removes frame out
-
-        Debug.Log( "Downloaded Texture. Now copying it" );
-
-        //Copy Texture to m_myTexture WITHOUT callback function
-        //StartCoroutine(copyTextureAsync(www.texture));
-
-        //Copy Texture to m_myTexture WITH callback function
-        StartCoroutine( copyTextureAsync( www.texture, false, finishedCopying ) );
+        // Set painting's texture over time
+        StartCoroutine( CopyTextureAsync( www.texture, imageID ) );
     }
 
-
-    IEnumerator copyTextureAsync( Texture2D source, bool useMipMap = false, System.Action callBack = null )
+    // Set chunks of painting's texture over time
+    IEnumerator CopyTextureAsync( Texture2D srcTex, int paintingID )
     {
-        const int LOOP_TO_WAIT = 400000; //Waits every 400,000 loop, Reduce this if still freezing
+        // Waiting time constant. Reduce this if still laggy
+        const int WAIT_TIME = 15000;
+        // Initialize loop counter
         int loopCounter = 0;
 
-        int heightSize = source.height;
-        int widthSize = source.width;
+        // Get texture dimensions
+        int heightSize = srcTex.height;
+        int widthSize = srcTex.width;
 
         //Create new Empty texture with size that matches source info
-        m_myTexture = new Texture2D( widthSize, heightSize, source.format, useMipMap );
+        Texture2D tex = new Texture2D( widthSize, heightSize );//, srcTex.format, useMipMap );
 
+        // Go through texture and set destination texture pixels
         for( int y = 0; y < heightSize; y++ )
         {
             for( int x = 0; x < widthSize; x++ )
             {
-                //Get color/pixel at x,y pixel from source Texture
-                Color tempSourceColor = source.GetPixel( x, y );
+                // Get pixel at specific pos from source texture
+                Color tempSourceColor = srcTex.GetPixel( x, y );
 
-                //Set color/pixel at x,y pixel to destintaion Texture
-                m_myTexture.SetPixel( x, y, tempSourceColor );
+                // Set texture's pixel at specified pos
+                tex.SetPixel( x, y, tempSourceColor );
 
+                // Increase loop counter
                 loopCounter++;
 
-                if( loopCounter % LOOP_TO_WAIT == 0 )
+                // Check if wait time elapsed
+                if( loopCounter % WAIT_TIME == 0 )
                 {
-                    //Debug.Log("Copying");
-                    yield return null; //Wait after every LOOP_TO_WAIT 
+                    yield return null;
                 }
             }
         }
         //Apply changes to the Texture
-        m_myTexture.Apply();
-        bFinishedCopying = true;
+        tex.Apply();
+        // Set painting's texture
+        paintingsObjects_[paintingID].SetTexture( tex );
 
-        //Let our optional callback function know that we've done copying Texture
-        if( callBack != null )
+        // If there is more images than paintings and if this image being 
+        //  processed is for the last painting, polish the painting position
+        if( imageFiles_.Count > paintingsObjects_.Count && paintingID == paintingsObjects_.Count - 1 )
         {
-            callBack.Invoke();
+            paintingsObjects_[paintingID].PolishPosition();
         }
-    }
-
-    void finishedCopying()
-    {
-        bFinishedCopying = true;
-        Debug.Log( "Finished Copying Texture" );
-        //paintings_[imageProcessed++].GetComponent<Renderer>().material.mainTexture = m_myTexture;
-        //Do something else
     }
 }
