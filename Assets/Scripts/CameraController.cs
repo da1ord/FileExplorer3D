@@ -21,73 +21,109 @@ public class CameraController :MonoBehaviour
     // Walking speed constant
     const float walkingSpeed_ = 5.0f;
     // Running speed constant
-    const float runningSpeed_ = 8.0f;
+    const float runningSpeed_ = 9.0f;
 
     // Initialization
     void Start()
     {
+        // Get player's rigidbody object
         rb_ = transform.parent.GetComponent<Rigidbody>();
+        // Get fileExplorer object
         fileExplorer_ = GameObject.Find( "Canvas" ).GetComponent<FileExplorer>();
     }
 
-    // Update call
+    // Update function
     void Update()
     {
+        // Return when during fading phase
         if( fileExplorer_.IsFading() )
         {
             return;
         }
 
-        if( fileExplorer_.IsShowingMore() )
-        {
-            if( Input.GetKey( KeyCode.Backspace ) )
+        #if UNITY_EDITOR
+            // If neither showing more objects nor intro screen, keep cursor locked
+            if( !fileExplorer_.IsShowingMoreObjects() && !fileExplorer_.IsShowingIntro() )
             {
-                fileExplorer_.StopShowingMore();
+                Cursor.lockState = CursorLockMode.Locked;
+            }
+        #endif
+        
+        // Check if showing more objects (files, images, dirs)
+        if( fileExplorer_.IsShowingMoreObjects() )
+        {
+            // ESC was pressed
+            if( Input.GetKeyUp( KeyCode.Escape ) )
+            {
+                // Hide UI elements for browsing more objects
+                fileExplorer_.StopShowingMoreObjects();
             }
 
+            // Enable arrows to brows through more images
             if( fileExplorer_.imagesBrowser_.IsActive() )
             {
-                if( Input.GetKey( KeyCode.LeftArrow ) )
+                // Show previous image
+                if( Input.GetKeyUp( KeyCode.LeftArrow ) )
                 {
                     fileExplorer_.PreviousImage();
                 }
-                else if( Input.GetKey( KeyCode.RightArrow ) )
+                // Show next image
+                else if( Input.GetKeyUp( KeyCode.RightArrow ) )
                 {
                     fileExplorer_.NextImage();
                 }
             }
             return;
         }
+        // Enable to open intro screen by pressing ESC
+        else if( !fileExplorer_.IsShowingIntro() )
+        {
+            if( Input.GetKeyUp( KeyCode.Escape ) )
+            {
+                fileExplorer_.ShowIntroScreen();
+                return;
+            }
+        }
 
         // Interaction with objects
         // Left mouse button pressed
         if( Input.GetMouseButtonDown( 0 ) )
         {
+            // Check for interactable objects in range
             if( Physics.Raycast( transform.position, transform.forward,
                 out hit_, 3.0f, LayerMask.GetMask( "Interactable" ) ) )
             {
+                // Get object hit by ray
                 ObjectProperties op = hit_.collider.gameObject.GetComponent<ObjectProperties>();
+                // Doors hit
                 if( hit_.collider.CompareTag( "Doors" ) )
                 {
-                    if( op.GetName() == "More directories ..." )//if( hit_.collider.name == "More directories ..." )
+                    // Hit 'More ...' doors. Show dropdown list with other folders
+                    if( op.GetName() == "More directories ..." )
                     {
                         fileExplorer_.ShowMoreDirectories();
                     }
                     else
                     {
-                        fileExplorer_.ChangeDirectory( op.GetFullName() );
+                        // Interacting with doors. Change directory given by 
+                        //  path stored in doors object
+                        fileExplorer_.ChangeDirectory( ((DirectoryProperties)op).GetFullPath() );
                     }
                 }
+                // Painting hit
                 else if( hit_.collider.CompareTag( "Painting" ) )
                 {
-                    if( op.GetName() == "More images ..." )//if( hit_.collider.name == "More images ..." )
+                    // Hit 'More ...' painting. Show image browser
+                    if( op.GetName() == "More images ..." )
                     {
                         fileExplorer_.ShowMoreImages();
                     }
                 }
+                // Statue hit
                 else if( hit_.collider.CompareTag( "Statue" ) )
                 {
-                    if( op.GetName() == "More files ..." )//if( hit_.collider.name == "More files ..." )
+                    // Hit 'More ...' files. Show textbox with other objects
+                    if( op.GetName() == "More files ..." )
                     {
                         fileExplorer_.ShowMoreFiles();
                     }

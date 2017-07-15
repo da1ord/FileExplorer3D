@@ -1,4 +1,4 @@
-﻿Shader "HoloToolkit/3DTextShader"
+Shader "Custom/3DTextShader"
 {
     Properties
     {

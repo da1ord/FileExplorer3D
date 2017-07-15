@@ -4,113 +4,75 @@ using UnityEngine;
 
 public class ObjectProperties : MonoBehaviour
 {
-    string objectName_;
-    string fullName_;
-    bool active_;
+    // Object name
+    protected string objectName_;
+    // Flag indicating if object is active
+    protected bool active_;
 
-    Texture2D tex_;
-    bool orientation_;
-    Vector3 orientationVector_ = new Vector3( 220f, 10f, 165f );
-    
-    /**/
-    Vector3 lastPaintingFloorPosition_ = new Vector3( 14f, 1.57f, -9.065f );
-    /**/
-    
-    // Use this for initialization
+    // Initialization
     void Start()
     {
+        // Set object's name
         objectName_ = "Object";
-        fullName_ = "Object";
+        // Deactivate object
         active_ = false;
-
-        tex_ = new Texture2D( 2, 2 );
-        orientation_ = false; // horizontal
     }
-	
-	// Update is called once per frame
-	void Update()
+
+    // Update function
+    void Update()
     {
     }
 
+    // Get object's name
     public string GetName()
     {
         return objectName_;
     }
+    // Set object's name
     public void SetName( string objectName )
     {
+        // Set objectName variable
         objectName_ = objectName;
-        gameObject.GetComponentInChildren<TextMesh>().text = objectName_;
+
+        // Get object's label textmesh
+        TextMesh tm = gameObject.GetComponentInChildren<TextMesh>();
+        // Set object name as label text
+        tm.text = objectName_;
+        // Get oobject name length
+        int length = objectName_.Length;
+
+        // If short text, set max font size
+        if( length < 20 )
+        {
+            tm.fontSize = 34;
+        }
+        // If text is longer than maximum, set min font size and truncate text
+        else if( length > 30 )
+        {
+            tm.fontSize = 24;
+            tm.text = objectName_.Substring( 0, 26 ) + " ...";
+        }
+        // Text between length boundaries, calculate the font size
+        else
+        {
+            tm.fontSize = 54 - length;
+        }
     }
-    public string GetFullName()
-    {
-        return fullName_;
-    }
-    public void SetFullName( string fullName )
-    {
-        fullName_ = fullName;
-    }
+    // Get object's state
     public bool IsActive()
     {
         return active_;
     }
+    // Activate object
     public void Activate()
     {
         active_ = true;
-        // parent active
         gameObject.SetActive( true );
     }
+    // Deactivate object
     public void Deactivate()
     {
         active_ = false;
-        // parent not active
         gameObject.SetActive( false );
-    }
-    public void SetTexture( Texture2D tex )
-    {
-        tex_ = tex;
-        gameObject.GetComponent<Renderer>().materials[2].mainTexture = tex_;
-
-        if( tex.height > tex.width )
-        {
-            SetVertical();
-        }
-        else
-        {
-            SetHorizontal();
-        }
-    }
-    public Texture2D GetTexture()
-    {
-        return tex_;
-    }
-    public void DeleteTexture()
-    {
-        Destroy( tex_ );
-    }
-    public void SetHorizontal()
-    {
-        orientation_ = false;
-        transform.localScale = orientationVector_;
-    }
-    public void SetVertical()
-    {
-        orientation_ = true;
-        transform.localScale = new Vector3( orientationVector_.z, orientationVector_.y, orientationVector_.x );
-    }
-    public void PolishPosition()
-    {
-        if( active_ )
-        {
-            // Vertical position
-            if( orientation_ )
-            {
-                transform.position = new Vector3( lastPaintingFloorPosition_.x, lastPaintingFloorPosition_.y + 0.5f, lastPaintingFloorPosition_.z - 0.12f );
-            }
-            // Horizontal position
-            else
-            {
-                transform.position = lastPaintingFloorPosition_;
-            }
-        }
     }
 }

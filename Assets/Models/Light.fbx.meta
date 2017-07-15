@@ -1,35 +1,15 @@
 fileFormatVersion: 2
-guid: 70e33d6352211f741aca5ea4b0081195
-timeCreated: 1499799318
+guid: a9776a432575eb547878af97bea3fa9b
+timeCreated: 1500113383
 licenseType: Free
 ModelImporter:
   serializedVersion: 19
   fileIDToRecycleName:
     100000: //RootNode
-    100002: Camera
-    100004: Door
-    100006: Lamp
-    100008: Painting
-    100010: Point
-    100012: Room
     400000: //RootNode
-    400002: Camera
-    400004: Door
-    400006: Lamp
-    400008: Painting
-    400010: Point
-    400012: Room
     2300000: //RootNode
-    2300002: Door
-    2300004: Painting
-    2300006: Room
     3300000: //RootNode
-    3300002: Door
-    3300004: Painting
-    3300006: Room
-    4300000: Room
-    4300002: Painting
-    4300004: Door
+    4300000: LightBase
   materials:
     importMaterials: 1
     materialName: 0
